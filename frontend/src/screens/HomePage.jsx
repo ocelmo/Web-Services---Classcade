@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Logo from '../assets/Logo.png';
 import LogoutImg from '../assets/Logout.png';
+import axios from 'axios';
 
 const styles = {
   page: {
@@ -129,80 +130,88 @@ const styles = {
   }
 };
 
-const groups = [
-  { id: 1, name: 'SWENG', status: 'In progress', modified: 'yesterday' },
-  { id: 2, name: 'COMPSCI', status: 'In progress', modified: '1 week ago' },
-  { id: 3, name: 'GROUP 3', status: 'Complete', modified: '3 years ago' },
-];
-
 const HomePage = () => {
   const navigate = useNavigate();
-  const handleCardClick = (groupId, groupName) => {
-    console.log(`Card clicked: ${groupName} (ID: ${groupId})`);
-    navigate('/dashboard');
+  const [user, setUser] = useState(null);
+  const [projects, setProjects] = useState([]);
+
+  useEffect(() => {
+    // Get the logged-in user from localStorage
+    const storedUser = JSON.parse(localStorage.getItem('user'));
+    if (!storedUser) {
+      navigate('/'); // redirect to login if not logged in
+      return;
+    }
+    setUser(storedUser);
+
+    // Fetch projects for this user
+    axios.get(`http://localhost:5000/api/projects/user/${storedUser.id}`)
+      .then(res => setProjects(res.data))
+      .catch(err => console.error('Error fetching projects:', err));
+  }, []);
+
+  const handleCardClick = (projectId, projectName) => {
+    console.log(`Card clicked: ${projectName} (ID: ${projectId})`);
+    navigate(`/dashboard/${projectId}`);
   };
 
-  const handleDeleteClick = (e, groupId, groupName) => {
-    e.stopPropagation(); // Prevent card click when delete is clicked
-    console.log(`Delete clicked: ${groupName} (ID: ${groupId})`);
-    // TODO: Show confirmation dialog and delete group
+  const handleDeleteClick = async (e, projectId) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this project?')) return;
+
+    try {
+      await axios.delete(`http://localhost:5000/api/projects/${projectId}`);
+      setProjects(prev => prev.filter(p => p._id !== projectId));
+    } catch (err) {
+      console.error('Error deleting project:', err);
+    }
   };
 
-  const handleNewGroupClick = () => {
-    console.log('New Group button clicked');
-    // TODO: Open new page window
+  const handleNewProjectClick = () => {
+    navigate('/new-project');
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
+    localStorage.removeItem('user');
     navigate('/');
-};
+  };
+
+  if (!user) return null; // prevent rendering before user is loaded
 
   return (
     <div style={styles.page}>
       <div style={styles.inner}>
-        <button 
-          style={styles.logoutBtn}
-          onClick={handleLogout}
-          aria-label="Logout"
-        >
+        <button style={styles.logoutBtn} onClick={handleLogout}>
           <img src={LogoutImg} alt="logout" style={{ width: 26, height: 31 }} />
         </button>
         <img src={Logo} alt="logo" style={{ width: 120, height: 120 }} />
-
-        <h1 style={styles.heading}>Welcome to CLASSCADE John!</h1>
-        <div style={styles.subtitle}>Click a group or create a new one to get started</div>
+        <h1 style={styles.heading}>Welcome to CLASSCADE {user.name}!</h1>
+        <div style={styles.subtitle}>Click a project or create a new one to get started</div>
 
         <div style={styles.list}>
-          {groups.map((g) => (
-            <div 
-              key={g.id} 
-              style={styles.card}
-              onClick={() => handleCardClick(g.id, g.name)}
-            >
+          {projects.map((p, index) => (
+            <div key={p._id} style={styles.card} onClick={() => handleCardClick(p._id, p.name)}>
               <div style={styles.cardLeft}>
-                <div style={styles.badge}>{g.id}.</div>
+                <div style={styles.badge}>{index + 1}.</div>
                 <div style={styles.cardContent}>
-                  <div style={styles.cardTitle}>{g.name}</div>
+                  <div style={styles.cardTitle}>{p.name}</div>
                   <div style={styles.cardMeta}>
-                    <div style={styles.metaText}>Status: {g.status}</div>
-                    <div style={styles.metaText}>Last Modified: {g.modified}</div>
+                    <div style={styles.metaText}>Status: {p.status}</div>
+                    <div style={styles.metaText}>
+                      Last Modified: {new Date(p.updatedAt).toLocaleDateString()}
+                    </div>
                   </div>
                 </div>
               </div>
-              <button 
-                style={styles.deleteBtn} 
-                aria-label={`delete ${g.name}`}
-                onClick={(e) => handleDeleteClick(e, g.id, g.name)}
-              >
+              <button style={styles.deleteBtn} onClick={(e) => handleDeleteClick(e, p._id)}>
                 &#128465;
               </button>
             </div>
           ))}
         </div>
 
-        <button style={styles.newGroupBtn} onClick={handleNewGroupClick}>
-          + New Group
+        <button style={styles.newGroupBtn} onClick={handleNewProjectClick}>
+          + New Project
         </button>
       </div>
     </div>
