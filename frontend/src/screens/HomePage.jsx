@@ -168,7 +168,7 @@ const HomePage = () => {
   };
 
   const handleNewProjectClick = () => {
-    navigate('/new-project');
+    navigate('/addnewproject');
   };
 
   const handleLogout = () => {
