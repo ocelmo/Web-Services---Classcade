@@ -34,6 +34,19 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// GET projects by user ID
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    // Find projects where the user is a member
+    const projects = await Project.find({ members: userId });
+    res.json(projects);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // UPDATE project by ID
 router.put('/:id', async (req, res) => {
   try {
